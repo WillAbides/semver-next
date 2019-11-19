@@ -32,36 +32,94 @@ type commit struct {
 	pulls   []pull
 }
 
-func DiffCommits(ctx context.Context, client *github.Client, oldTag, newRef, owner, repo string) ([]commit, error ){
-	comp, _, err := client.Repositories.CompareCommits(ctx, owner, repo, oldTag, newRef)
+//go:generate mockgen -source internal.go -destination ./mocks/mock_internal.go
+
+type GithubPullRequestsService interface {
+	ListPullRequestsWithCommit(ctx context.Context, owner, repo, sha string, opt *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error)
+}
+
+type GithubRepositoriesService interface {
+	CompareCommits(ctx context.Context, owner, repo string, base, head string) (*github.CommitsComparison, *github.Response, error)
+}
+
+func WrapClient(client *github.Client) *ClientWrapper {
+	return &ClientWrapper{
+		client: client,
+	}
+}
+
+type ClientWrapper struct {
+	client        *github.Client
+	_pullRequests GithubPullRequestsService
+	_repositories GithubRepositoriesService
+}
+
+func (w *ClientWrapper) repositories() GithubRepositoriesService {
+	if w._repositories != nil {
+		return w._repositories
+	}
+	if w.client != nil {
+		return w.client.Repositories
+	}
+	return nil
+}
+
+func (w *ClientWrapper) pullRequests() GithubPullRequestsService {
+	if w._pullRequests != nil {
+		return w._pullRequests
+	}
+	if w.client != nil {
+		return w.client.PullRequests
+	}
+	return nil
+}
+
+type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error)
+
+func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, owner, repo string, bc commitBuilder) ([]commit, error) {
+	if bc == nil {
+		bc = buildCommit
+	}
+	comp, _, err := client.repositories().CompareCommits(ctx, owner, repo, oldTag, newRef)
 	if err != nil {
 		return nil, err
 	}
+	if comp == nil {
+		return []commit{}, nil
+	}
 	commits := make([]commit, len(comp.Commits))
-	for commitIt, cmmt := range comp.Commits {
-		commitPulls, _, err := client.PullRequests.ListPullRequestsWithCommit(ctx, "WillAbides", "bindownloader", cmmt.GetSHA(), &github.PullRequestListOptions{
-			State: "merged",
-		})
+	for commitIt, ghCommit := range comp.Commits {
+		commits[commitIt], err = bc(ctx, client, owner, repo, ghCommit)
 		if err != nil {
 			return nil, err
 		}
-		pls := make([]pull, len(commitPulls))
-		for pullIt, pl := range commitPulls {
-			lbls := make([]string, len(pl.Labels))
-			for i, label := range pl.Labels {
-				lbls[i] = label.GetName()
-			}
-			pls[pullIt] = pull{
-				number: pl.GetNumber(),
-				labels: lbls,
-			}
-		}
-		commits[commitIt] = commit{
-			message: cmmt.GetCommit().GetMessage(),
-			pulls:   pls,
-		}
 	}
 	return commits, nil
+}
+
+func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error) {
+	commitPulls, _, err := client.pullRequests().ListPullRequestsWithCommit(ctx, owner, repo, repoCommit.GetSHA(), &github.PullRequestListOptions{
+		State: "merged",
+	})
+	if err != nil {
+		return commit{}, err
+	}
+	pls := make([]pull, len(commitPulls))
+	for pullIt, pl := range commitPulls {
+		lbls := make([]string, len(pl.Labels))
+		for i, label := range pl.Labels {
+			lbls[i] = label.GetName()
+		}
+		pls[pullIt] = pull{
+			number: pl.GetNumber(),
+			labels: lbls,
+		}
+	}
+	c := commit{
+		message: repoCommit.GetCommit().GetMessage(),
+		pulls:   pls,
+	}
+	return c, nil
 }
 
 func NextVersion(version semver.Version, commits []commit) semver.Version {
