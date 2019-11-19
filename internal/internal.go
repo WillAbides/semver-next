@@ -40,6 +40,7 @@ type GithubPullRequestsService interface {
 
 type GithubRepositoriesService interface {
 	CompareCommits(ctx context.Context, owner, repo string, base, head string) (*github.CommitsComparison, *github.Response, error)
+	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 func WrapClient(client *github.Client) *ClientWrapper {
@@ -72,6 +73,17 @@ func (w *ClientWrapper) pullRequests() GithubPullRequestsService {
 		return w.client.PullRequests
 	}
 	return nil
+}
+
+func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo string) (name, tag string, err error) {
+	var release *github.RepositoryRelease
+	release, _, err = client.repositories().GetLatestRelease(ctx, owner, repo)
+	if err != nil {
+		return name, tag, err
+	}
+	name = release.GetName()
+	tag = release.GetTagName()
+	return name, tag, err
 }
 
 type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error)

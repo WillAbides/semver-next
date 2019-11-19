@@ -88,3 +88,19 @@ func (mr *MockGithubRepositoriesServiceMockRecorder) CompareCommits(ctx, owner, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CompareCommits", reflect.TypeOf((*MockGithubRepositoriesService)(nil).CompareCommits), ctx, owner, repo, base, head)
 }
+
+// GetLatestRelease mocks base method
+func (m *MockGithubRepositoriesService) GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLatestRelease", ctx, owner, repo)
+	ret0, _ := ret[0].(*github.RepositoryRelease)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetLatestRelease indicates an expected call of GetLatestRelease
+func (mr *MockGithubRepositoriesServiceMockRecorder) GetLatestRelease(ctx, owner, repo interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestRelease", reflect.TypeOf((*MockGithubRepositoriesService)(nil).GetLatestRelease), ctx, owner, repo)
+}

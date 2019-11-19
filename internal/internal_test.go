@@ -11,6 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestLatestRelease(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockReposSvc := mocks.NewMockGithubRepositoriesService(ctrl)
+	wrapper := &ClientWrapper{
+		_repositories: mockReposSvc,
+	}
+	ctx := context.Background()
+	wantReleaseName := "want release name"
+	wantTagName := "want tag name"
+	mockReposSvc.EXPECT().GetLatestRelease(ctx, "foo", "bar").Return(
+		&github.RepositoryRelease{
+			Name:    github.String(wantReleaseName),
+			TagName: github.String(wantTagName),
+		},
+		&github.Response{},
+		nil,
+	)
+
+	gotReleaseName, gotTagName, err := LatestRelease(ctx, wrapper, "foo", "bar")
+	assert.NoError(t, err)
+	assert.Equal(t, wantReleaseName, gotReleaseName)
+	assert.Equal(t, wantTagName, gotTagName)
+}
+
 func Test_buildCommit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
