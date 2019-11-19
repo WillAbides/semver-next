@@ -45,6 +45,8 @@ type GithubPullRequestsService interface {
 }
 
 type GithubRepositoriesService interface {
+	ListCommits(ctx context.Context, owner, repo string, opt *github.CommitsListOptions) ([]*github.RepositoryCommit, *github.Response, error)
+	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
 	CompareCommits(ctx context.Context, owner, repo string, base, head string) (*github.CommitsComparison, *github.Response, error)
 	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
@@ -106,19 +108,42 @@ func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, own
 	if bc == nil {
 		bc = buildCommit
 	}
-	comp, _, err := client.repositories().CompareCommits(ctx, owner, repo, oldTag, newRef)
+
+	oldSha1, _, err := client.repositories().GetCommitSHA1(ctx, owner, repo, oldTag, "")
 	if err != nil {
 		return nil, err
 	}
-	if comp == nil {
-		return []commit{}, nil
+
+	opt := &github.CommitsListOptions{
+		SHA: newRef,
+		ListOptions: github.ListOptions{
+			PerPage: 100,
+		},
 	}
-	commits := make([]commit, len(comp.Commits))
-	for commitIt, ghCommit := range comp.Commits {
-		commits[commitIt], err = bc(ctx, client, owner, repo, ghCommit)
+
+	var commits []commit
+	for {
+		repoCommits, resp, err := client.repositories().ListCommits(ctx, owner, repo, opt)
 		if err != nil {
 			return nil, err
 		}
+		var hitLastSha bool
+		for _, repoCommit := range repoCommits {
+			sha := repoCommit.GetSHA()
+			if sha == oldSha1 {
+				hitLastSha = true
+				break
+			}
+			commit, err := bc(ctx, client, owner, repo, *repoCommit)
+			if err != nil {
+				return nil, err
+			}
+			commits = append(commits, commit)
+		}
+		if resp.NextPage == 0 || hitLastSha {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 	return commits, nil
 }
@@ -141,11 +166,10 @@ func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo 
 			labels: lbls,
 		}
 	}
-	c := commit{
+	return commit{
 		message: repoCommit.GetCommit().GetMessage(),
 		pulls:   pls,
-	}
-	return c, nil
+	}, nil
 }
 
 func NextVersion(version semver.Version, commits []commit) semver.Version {

@@ -88,12 +88,18 @@ func TestDiffCommits(t *testing.T) {
 	exRepo := "fooRepo"
 	base := "oldTag"
 	head := "newRef"
-	repoCommits := []github.RepositoryCommit{
+	repoCommits := []*github.RepositoryCommit{
 		{
 			Commit: &github.Commit{
 				Message: github.String("commit message"),
 			},
 			SHA: github.String("deadbeef"),
+		},
+		{
+			Commit: &github.Commit{
+				Message: github.String("commit message 2"),
+			},
+			SHA: github.String("oldbeef"),
 		},
 	}
 	wantCommit := commit{
@@ -109,18 +115,25 @@ func TestDiffCommits(t *testing.T) {
 		t.Helper()
 		assert.Equal(t, exOwner, owner)
 		assert.Equal(t, exRepo, repo)
-		assert.Equal(t, repoCommits[0], repoCommit)
+		assert.Contains(t, repoCommits, &repoCommit)
 		return wantCommit, nil
 	}
 
 	ctx := context.Background()
-	mockReposSvc.EXPECT().CompareCommits(ctx, exOwner, exRepo, base, head).Return(
-		&github.CommitsComparison{
-			Commits: repoCommits,
+	mockReposSvc.EXPECT().GetCommitSHA1(ctx, exOwner, exRepo, base, "").Return("oldbeef", nil, nil)
+	mockReposSvc.EXPECT().ListCommits(ctx, exOwner, exRepo, &github.CommitsListOptions{
+		SHA: head,
+		ListOptions: github.ListOptions{
+			PerPage: 100,
 		},
-		&github.Response{},
+	}).Return(
+		repoCommits,
+		&github.Response{
+			NextPage: 1,
+		},
 		nil,
 	)
+
 	got, err := DiffCommits(ctx, wrapper, base, head, exOwner, exRepo, bc)
 	assert.NoError(t, err)
 	assert.Equal(t, []commit{wantCommit}, got)

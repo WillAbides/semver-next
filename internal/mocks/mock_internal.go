@@ -73,6 +73,38 @@ func (m *MockGithubRepositoriesService) EXPECT() *MockGithubRepositoriesServiceM
 	return m.recorder
 }
 
+// ListCommits mocks base method
+func (m *MockGithubRepositoriesService) ListCommits(ctx context.Context, owner, repo string, opt *github.CommitsListOptions) ([]*github.RepositoryCommit, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListCommits", ctx, owner, repo, opt)
+	ret0, _ := ret[0].([]*github.RepositoryCommit)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListCommits indicates an expected call of ListCommits
+func (mr *MockGithubRepositoriesServiceMockRecorder) ListCommits(ctx, owner, repo, opt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCommits", reflect.TypeOf((*MockGithubRepositoriesService)(nil).ListCommits), ctx, owner, repo, opt)
+}
+
+// GetCommitSHA1 mocks base method
+func (m *MockGithubRepositoriesService) GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCommitSHA1", ctx, owner, repo, ref, lastSHA)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetCommitSHA1 indicates an expected call of GetCommitSHA1
+func (mr *MockGithubRepositoriesServiceMockRecorder) GetCommitSHA1(ctx, owner, repo, ref, lastSHA interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCommitSHA1", reflect.TypeOf((*MockGithubRepositoriesService)(nil).GetCommitSHA1), ctx, owner, repo, ref, lastSHA)
+}
+
 // CompareCommits mocks base method
 func (m *MockGithubRepositoriesService) CompareCommits(ctx context.Context, owner, repo, base, head string) (*github.CommitsComparison, *github.Response, error) {
 	m.ctrl.T.Helper()
