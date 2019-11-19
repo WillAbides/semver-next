@@ -1,4 +1,4 @@
-module github.com/WillAbides/semrel
+module github.com/WillAbides/semver-next
 
 go 1.13
 
