@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/WillAbides/semrel/internal"
+	"github.com/WillAbides/semver-next/internal"
 	"github.com/alecthomas/kong"
 	"github.com/google/go-github/v28/github"
 	"golang.org/x/oauth2"
