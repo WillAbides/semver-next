@@ -19,6 +19,7 @@ var cli struct {
 	Ref                string `kong:"short=r,default=master"`
 	LastReleaseVersion string `kong:"short=v"`
 	GithubToken        string `kong:"required,hidden,env=GITHUB_TOKEN"`
+	AllowFirstRelease  bool   `kong:"help='When there is no previous version to be found, return 0.1.0 instead of erroring out.'"`
 }
 
 func main() {
@@ -53,15 +54,27 @@ func main() {
 	var lastReleaseName string
 
 	if lastTag == "" {
-		var err error
-		lastReleaseName, lastTag, err = internal.LatestRelease(ctx, client, owner, repo)
+		lr, err := internal.LatestRelease(ctx, client, owner, repo)
 		if err != nil {
 			log.Fatalf("could not get latest tag: %v", err)
 		}
+		if lr != nil {
+			lastReleaseName = lr.Name
+			lastTag = lr.Tag
+		}
 	}
+
+	if lastTag == "" {
+		if cli.AllowFirstRelease {
+			fmt.Println("0.1.0")
+			return
+		}
+		log.Fatal("could not find a previous tag and allow-first-release is not set.")
+	}
+
 	if lastReleaseVersion == nil {
 		var err error
-		lastReleaseVersion, err = calcLastReleaseVersion(lastTag, lastReleaseName, false)
+		lastReleaseVersion, err = calcLastReleaseVersion(lastTag, lastReleaseName)
 		if err != nil || lastReleaseVersion == nil {
 			log.Fatal("could not calculate previous release version and allow-first-release is not set")
 		}
@@ -76,7 +89,7 @@ func main() {
 	fmt.Println(newVersion)
 }
 
-func calcLastReleaseVersion(lastTag string, lastReleaseName string, allowFirstVersion bool) (*semver.Version, error) {
+func calcLastReleaseVersion(lastTag string, lastReleaseName string) (*semver.Version, error) {
 	version, err := semver.NewVersion(lastTag)
 	if err == nil {
 		return version, nil
@@ -84,9 +97,6 @@ func calcLastReleaseVersion(lastTag string, lastReleaseName string, allowFirstVe
 	version, err = semver.NewVersion(lastReleaseName)
 	if err == nil {
 		return version, nil
-	}
-	if allowFirstVersion {
-		return semver.NewVersion("0.1.0")
 	}
 	return nil, fmt.Errorf("no version to return")
 }

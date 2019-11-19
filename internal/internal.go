@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -30,6 +31,11 @@ var labelLevels = map[string]ChangeLevel{
 type commit struct {
 	message string
 	pulls   []pull
+}
+
+type Release struct {
+	Name string
+	Tag  string
 }
 
 //go:generate mockgen -source internal.go -destination ./mocks/mock_internal.go
@@ -75,15 +81,23 @@ func (w *ClientWrapper) pullRequests() GithubPullRequestsService {
 	return nil
 }
 
-func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo string) (name, tag string, err error) {
-	var release *github.RepositoryRelease
-	release, _, err = client.repositories().GetLatestRelease(ctx, owner, repo)
+func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo string) (*Release, error) {
+	var repoRelease *github.RepositoryRelease
+	var err error
+	repoRelease, _, err = client.repositories().GetLatestRelease(ctx, owner, repo)
 	if err != nil {
-		return name, tag, err
+		// err should be nil when status is 404
+		if errResp, ok := err.(*github.ErrorResponse); ok {
+			if errResp.Response.StatusCode == http.StatusNotFound {
+				err = nil
+			}
+		}
+		return nil, err
 	}
-	name = release.GetName()
-	tag = release.GetTagName()
-	return name, tag, err
+	return &Release{
+		Name: repoRelease.GetName(),
+		Tag:  repoRelease.GetTagName(),
+	}, nil
 }
 
 type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error)

@@ -30,10 +30,10 @@ func TestLatestRelease(t *testing.T) {
 		nil,
 	)
 
-	gotReleaseName, gotTagName, err := LatestRelease(ctx, wrapper, "foo", "bar")
+	got, err := LatestRelease(ctx, wrapper, "foo", "bar")
 	assert.NoError(t, err)
-	assert.Equal(t, wantReleaseName, gotReleaseName)
-	assert.Equal(t, wantTagName, gotTagName)
+	assert.Equal(t, wantReleaseName, got.Name)
+	assert.Equal(t, wantTagName, got.Tag)
 }
 
 func Test_buildCommit(t *testing.T) {
