@@ -42,7 +42,7 @@ func main() {
 		panic(err)
 	}
 
-	commits, err := internal.DiffCommits(ctx, client, cli.LastReleaseTag, cli.Ref, owner, repo)
+	commits, err := internal.DiffCommits(ctx, internal.WrapClient(client), cli.LastReleaseTag, cli.Ref, owner, repo, nil)
 	if err != nil {
 		panic(err)
 	}
