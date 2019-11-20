@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
+
+make -s bin/semver-next
+
+GITHUB_SHA="${GITHUB_SHA:-"$(git rev-parse HEAD)"}"
+GITHUB_REPO="${GITHUB_REPOSITORY:-"WillAbides/semver-next"}"
+
+new_version="$(bin/semver-next "$GITHUB_REPO" -r "$GITHUB_SHA")"
+
+echo "$new_version"
