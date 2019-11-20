@@ -11,6 +11,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestLatestRelease(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockReposSvc := mocks.NewMockGithubRepositoriesService(ctrl)
+	wrapper := &ClientWrapper{
+		_repositories: mockReposSvc,
+	}
+	ctx := context.Background()
+	wantReleaseName := "want release name"
+	wantTagName := "want tag name"
+	mockReposSvc.EXPECT().GetLatestRelease(ctx, "foo", "bar").Return(
+		&github.RepositoryRelease{
+			Name:    github.String(wantReleaseName),
+			TagName: github.String(wantTagName),
+		},
+		&github.Response{},
+		nil,
+	)
+
+	got, err := LatestRelease(ctx, wrapper, "foo", "bar")
+	assert.NoError(t, err)
+	assert.Equal(t, wantReleaseName, got.Name)
+	assert.Equal(t, wantTagName, got.Tag)
+}
+
 func Test_buildCommit(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -63,12 +88,18 @@ func TestDiffCommits(t *testing.T) {
 	exRepo := "fooRepo"
 	base := "oldTag"
 	head := "newRef"
-	repoCommits := []github.RepositoryCommit{
+	repoCommits := []*github.RepositoryCommit{
 		{
 			Commit: &github.Commit{
 				Message: github.String("commit message"),
 			},
 			SHA: github.String("deadbeef"),
+		},
+		{
+			Commit: &github.Commit{
+				Message: github.String("commit message 2"),
+			},
+			SHA: github.String("oldbeef"),
 		},
 	}
 	wantCommit := commit{
@@ -84,18 +115,25 @@ func TestDiffCommits(t *testing.T) {
 		t.Helper()
 		assert.Equal(t, exOwner, owner)
 		assert.Equal(t, exRepo, repo)
-		assert.Equal(t, repoCommits[0], repoCommit)
+		assert.Contains(t, repoCommits, &repoCommit)
 		return wantCommit, nil
 	}
 
 	ctx := context.Background()
-	mockReposSvc.EXPECT().CompareCommits(ctx, exOwner, exRepo, base, head).Return(
-		&github.CommitsComparison{
-			Commits: repoCommits,
+	mockReposSvc.EXPECT().GetCommitSHA1(ctx, exOwner, exRepo, base, "").Return("oldbeef", nil, nil)
+	mockReposSvc.EXPECT().ListCommits(ctx, exOwner, exRepo, &github.CommitsListOptions{
+		SHA: head,
+		ListOptions: github.ListOptions{
+			PerPage: 100,
 		},
-		&github.Response{},
+	}).Return(
+		repoCommits,
+		&github.Response{
+			NextPage: 1,
+		},
 		nil,
 	)
+
 	got, err := DiffCommits(ctx, wrapper, base, head, exOwner, exRepo, bc)
 	assert.NoError(t, err)
 	assert.Equal(t, []commit{wantCommit}, got)
