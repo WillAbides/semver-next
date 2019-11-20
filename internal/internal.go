@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -51,6 +52,10 @@ type GithubRepositoriesService interface {
 	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
+type GithubGitService interface {
+	CreateRef(ctx context.Context, owner string, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
+}
+
 func WrapClient(client *github.Client) *ClientWrapper {
 	return &ClientWrapper{
 		client: client,
@@ -61,6 +66,7 @@ type ClientWrapper struct {
 	client        *github.Client
 	_pullRequests GithubPullRequestsService
 	_repositories GithubRepositoriesService
+	_git          GithubGitService
 }
 
 func (w *ClientWrapper) repositories() GithubRepositoriesService {
@@ -81,6 +87,31 @@ func (w *ClientWrapper) pullRequests() GithubPullRequestsService {
 		return w.client.PullRequests
 	}
 	return nil
+}
+
+func (w *ClientWrapper) git() GithubGitService {
+	if w._git != nil {
+		return w._git
+	}
+	if w.client != nil {
+		return w.client.Git
+	}
+	return nil
+}
+
+func CreateTag(ctx context.Context, client *ClientWrapper, owner, repo, tag, targetRef string) error {
+	targetSha, _, err := client.repositories().GetCommitSHA1(ctx, owner, repo, targetRef, "")
+	if err != nil {
+		return err
+	}
+	tagRef := fmt.Sprintf("refs/tags/%s", tag)
+	_, _, err = client.git().CreateRef(ctx, owner, repo, &github.Reference{
+		Ref: github.String(tagRef),
+		Object: &github.GitObject{
+			SHA: github.String(targetSha),
+		},
+	})
+	return err
 }
 
 func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo string) (*Release, error) {
