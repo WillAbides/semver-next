@@ -63,7 +63,7 @@ func Test_buildCommit(t *testing.T) {
 			},
 		}, &github.Response{}, nil,
 	)
-	want := commit{
+	want := Commit{
 		message: "commit message",
 		pulls: []pull{
 			{
@@ -102,7 +102,7 @@ func TestDiffCommits(t *testing.T) {
 			SHA: github.String("oldbeef"),
 		},
 	}
-	wantCommit := commit{
+	wantCommit := Commit{
 		message: "foo",
 		pulls: []pull{
 			{
@@ -111,7 +111,7 @@ func TestDiffCommits(t *testing.T) {
 			},
 		},
 	}
-	bc := func(_ context.Context, _ *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error) {
+	bc := func(_ context.Context, _ *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
 		t.Helper()
 		assert.Equal(t, exOwner, owner)
 		assert.Equal(t, exRepo, repo)
@@ -136,7 +136,7 @@ func TestDiffCommits(t *testing.T) {
 
 	got, err := DiffCommits(ctx, wrapper, base, head, exOwner, exRepo, bc)
 	assert.NoError(t, err)
-	assert.Equal(t, []commit{wantCommit}, got)
+	assert.Equal(t, []Commit{wantCommit}, got)
 }
 
 func Test_parseCommitMessage(t *testing.T) {
@@ -164,7 +164,7 @@ breaking: omg
 }
 
 func Test_nextVersion(t *testing.T) {
-	commits := []commit{
+	commits := []Commit{
 		{
 			message: "nothing",
 		},
