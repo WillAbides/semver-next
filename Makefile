@@ -4,7 +4,7 @@ GOBUILD=$(GOCMD) build
 .PHONY: gobuildcache
 
 bin/semver-next: gobuildcache
-	go build .
+	go build -o bin/semver-next .
 bins += bin/semver-next
 
 bin/bindownloader:
@@ -14,6 +14,10 @@ bins += bin/bindownloader
 bin/golangci-lint: bin/bindownloader
 	bin/bindownloader $@
 bins += bin/golangci-lint
+
+bin/octo: bin/bindownloader
+	bin/bindownloader $@
+bins += bin/octo
 
 bin/gobin: bin/bindownloader
 	bin/bindownloader $@
