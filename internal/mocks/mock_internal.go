@@ -136,3 +136,42 @@ func (mr *MockGithubRepositoriesServiceMockRecorder) GetLatestRelease(ctx, owner
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLatestRelease", reflect.TypeOf((*MockGithubRepositoriesService)(nil).GetLatestRelease), ctx, owner, repo)
 }
+
+// MockGithubGitService is a mock of GithubGitService interface
+type MockGithubGitService struct {
+	ctrl     *gomock.Controller
+	recorder *MockGithubGitServiceMockRecorder
+}
+
+// MockGithubGitServiceMockRecorder is the mock recorder for MockGithubGitService
+type MockGithubGitServiceMockRecorder struct {
+	mock *MockGithubGitService
+}
+
+// NewMockGithubGitService creates a new mock instance
+func NewMockGithubGitService(ctrl *gomock.Controller) *MockGithubGitService {
+	mock := &MockGithubGitService{ctrl: ctrl}
+	mock.recorder = &MockGithubGitServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockGithubGitService) EXPECT() *MockGithubGitServiceMockRecorder {
+	return m.recorder
+}
+
+// CreateRef mocks base method
+func (m *MockGithubGitService) CreateRef(ctx context.Context, owner, repo string, ref *github.Reference) (*github.Reference, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateRef", ctx, owner, repo, ref)
+	ret0, _ := ret[0].(*github.Reference)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateRef indicates an expected call of CreateRef
+func (mr *MockGithubGitServiceMockRecorder) CreateRef(ctx, owner, repo, ref interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRef", reflect.TypeOf((*MockGithubGitService)(nil).CreateRef), ctx, owner, repo, ref)
+}
