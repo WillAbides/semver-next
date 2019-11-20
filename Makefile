@@ -15,6 +15,10 @@ bin/golangci-lint: bin/bindownloader
 	bin/bindownloader $@
 bins += bin/golangci-lint
 
+bin/octo: bin/bindownloader
+	bin/bindownloader $@
+bins += bin/octo
+
 bin/gobin: bin/bindownloader
 	bin/bindownloader $@
 bins += bin/gobin
