@@ -4,6 +4,8 @@ set -e
 
 CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
 
+go mod verify
+
 make -s bin/golangci-lint
 
 bin/golangci-lint run
