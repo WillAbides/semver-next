@@ -99,12 +99,16 @@ func (w *ClientWrapper) git() GithubGitService {
 	return nil
 }
 
-func CreateTag(ctx context.Context, client *ClientWrapper, owner, repo, tag, sha string) error {
-	ref := fmt.Sprintf("refs/tags/%s", tag)
-	_, _, err := client.git().CreateRef(ctx, owner, repo, &github.Reference{
-		Ref: github.String(ref),
+func CreateTag(ctx context.Context, client *ClientWrapper, owner, repo, tag, targetRef string) error {
+	targetSha, _, err := client.repositories().GetCommitSHA1(ctx, owner, repo, targetRef, "")
+	if err != nil {
+		return err
+	}
+	tagRef := fmt.Sprintf("refs/tags/%s", tag)
+	_, _, err = client.git().CreateRef(ctx, owner, repo, &github.Reference{
+		Ref: github.String(tagRef),
 		Object: &github.GitObject{
-			SHA: github.String(sha),
+			SHA: github.String(targetSha),
 		},
 	})
 	return err

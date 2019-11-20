@@ -16,16 +16,19 @@ func TestCreateTag(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mockGitSvc := mocks.NewMockGithubGitService(ctrl)
+	mockReposSvc := mocks.NewMockGithubRepositoriesService(ctrl)
 	wrapper := &ClientWrapper{
-		_git: mockGitSvc,
+		_git:          mockGitSvc,
+		_repositories: mockReposSvc,
 	}
+	mockReposSvc.EXPECT().GetCommitSHA1(ctx, "foo", "bar", "deadbeef", "").Return("4ee551021fc59c2d45c2d7a91b1562914e4dff61", nil, nil)
 	mockGitSvc.EXPECT().CreateRef(ctx, "foo", "bar", &github.Reference{
 		Ref: github.String("refs/tags/newtag"),
 		Object: &github.GitObject{
 			SHA: github.String("4ee551021fc59c2d45c2d7a91b1562914e4dff61"),
 		},
 	})
-	err := CreateTag(ctx, wrapper, "foo", "bar", "newtag", "4ee551021fc59c2d45c2d7a91b1562914e4dff61")
+	err := CreateTag(ctx, wrapper, "foo", "bar", "newtag", "deadbeef")
 	assert.NoError(t, err)
 }
 

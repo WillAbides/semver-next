@@ -20,6 +20,7 @@ var cli struct {
 	LastReleaseVersion string `kong:"short=v"`
 	GithubToken        string `kong:"required,hidden,env=GITHUB_TOKEN"`
 	AllowFirstRelease  bool   `kong:"help='When there is no previous version to be found, return 0.1.0 instead of erroring out.'"`
+	CreateTag          bool   `kong:"create the new tag on github"`
 }
 
 func main() {
@@ -87,6 +88,13 @@ func main() {
 
 	newVersion := internal.NextVersion(*lastReleaseVersion, commits)
 	fmt.Println(newVersion)
+
+	if cli.CreateTag {
+		err = internal.CreateTag(ctx, client, owner, repo, fmt.Sprintf("v%s", newVersion), cli.Ref)
+		if err != nil {
+			log.Fatal("could not create tag.")
+		}
+	}
 }
 
 func calcLastReleaseVersion(lastTag string, lastReleaseName string) (*semver.Version, error) {
