@@ -52,23 +52,5 @@
       "move-from": "goreleaser",
       "bin": "goreleaser"
     }
-  ],
-  "octo": [
-    {
-      "os": "darwin",
-      "arch": "amd64",
-      "url": "https://github.com/octo-cli/octo-cli/releases/download/v0.1.0/octo-cli_0.1.0_Darwin_x86_64.tar.gz",
-      "checksum": "aa4596e4190836cfb91cd3d4a8a43d09c64e8355d26096cae99633917e7cd4b2",
-      "move-from": "octo",
-      "bin": "octo"
-    },
-    {
-      "os": "linux",
-      "arch": "amd64",
-      "url": "https://github.com/octo-cli/octo-cli/releases/download/v0.1.0/octo-cli_0.1.0_Linux_x86_64.tar.gz",
-      "checksum": "febbf02b1d0ced9c7e0c10372f9c476abc6ea22f2a5825d26f7c51f43ec00d65",
-      "move-from": "octo",
-      "bin": "octo"
-    }
   ]
 }
