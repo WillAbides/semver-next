@@ -28,7 +28,7 @@ var labelLevels = map[string]ChangeLevel{
 	"enhancement":     ChangeLevelMinor,
 }
 
-type commit struct {
+type Commit struct {
 	message string
 	pulls   []pull
 }
@@ -102,9 +102,9 @@ func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo strin
 	}, nil
 }
 
-type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error)
+type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error)
 
-func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, owner, repo string, bc commitBuilder) ([]commit, error) {
+func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, owner, repo string, bc commitBuilder) ([]Commit, error) {
 	if bc == nil {
 		bc = buildCommit
 	}
@@ -121,7 +121,7 @@ func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, own
 		},
 	}
 
-	var commits []commit
+	var commits []Commit
 	for {
 		repoCommits, resp, err := client.repositories().ListCommits(ctx, owner, repo, opt)
 		if err != nil {
@@ -148,12 +148,12 @@ func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, own
 	return commits, nil
 }
 
-func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (commit, error) {
+func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
 	commitPulls, _, err := client.pullRequests().ListPullRequestsWithCommit(ctx, owner, repo, repoCommit.GetSHA(), &github.PullRequestListOptions{
 		State: "merged",
 	})
 	if err != nil {
-		return commit{}, err
+		return Commit{}, err
 	}
 	pls := make([]pull, len(commitPulls))
 	for pullIt, pl := range commitPulls {
@@ -166,13 +166,13 @@ func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo 
 			labels: lbls,
 		}
 	}
-	return commit{
+	return Commit{
 		message: repoCommit.GetCommit().GetMessage(),
 		pulls:   pls,
 	}, nil
 }
 
-func NextVersion(version semver.Version, commits []commit) semver.Version {
+func NextVersion(version semver.Version, commits []Commit) semver.Version {
 	level := ChangeLevelNoChange
 	for _, commit := range commits {
 		level = level.Greater(commit.level())
@@ -189,7 +189,7 @@ func NextVersion(version semver.Version, commits []commit) semver.Version {
 	}
 }
 
-func (c commit) level() ChangeLevel {
+func (c Commit) level() ChangeLevel {
 	level := parseCommitMessage(c.message)
 	for _, p := range c.pulls {
 		level = level.Greater(p.level())
