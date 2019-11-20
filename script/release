@@ -8,21 +8,8 @@ make -s bin/semver-next bin/octo bin/goreleaser
 
 GITHUB_SHA="${GITHUB_SHA:-"$(git rev-parse HEAD)"}"
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-"WillAbides/semver-next"}"
-REPO_NAME="$(basename "$GITHUB_REPOSITORY")"
-REPO_OWNER="$(dirname "$GITHUB_REPOSITORY")"
 
-new_version="$(bin/semver-next "$GITHUB_REPOSITORY" -r "$GITHUB_SHA")"
-new_tag="v$new_version"
-
-tag_ref="$(bin/octo git create-ref --owner "$REPO_OWNER" --repo "$REPO_NAME" \
- --ref "refs/tags/$new_tag" --sha "$GITHUB_SHA" \
- --format '{{.ref}}'
-)"
-
-[ "$tag_ref" = "refs/tags/$new_tag" ] || {
-  echo error creating tag
-  exit 1
-}
+bin/semver-next "$GITHUB_REPOSITORY" -r "$GITHUB_SHA" --create-tag
 
 git fetch --tags
 
