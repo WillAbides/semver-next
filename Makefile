@@ -4,7 +4,7 @@ GOBUILD=$(GOCMD) build
 .PHONY: gobuildcache
 
 bin/semver-next: gobuildcache
-	go build -o bin/semver-next .
+	go build -ldflags "-s -w" -o bin/semver-next .
 bins += bin/semver-next
 
 bin/bindownloader:

@@ -14,6 +14,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var version = "unknown"
+
 var kongVars = kong.Vars{
 	"repo_help": `GitHub repository in "<owner>/<repo>" format. e.g. WillAbides/semver-next`,
 
@@ -28,6 +30,8 @@ don't follow semver format.`,
 	"allow_first_release_help": `When there is no previous version to be found, return 0.1.0 instead of erroring out.`,
 
 	"create_tag_help": `Create a tag for the new release.`,
+
+	"version_help": `output semver-next's version and exit`,
 }
 
 var mainHelp = `
@@ -36,13 +40,22 @@ latest release to determine the next release version based on semantic version r
 `
 
 var cli struct {
-	Repo                   string `kong:"arg,required,help=${repo_help}"`
-	Ref                    string `kong:"short=r,default=master,help=${ref_help}"`
-	PreviousReleaseVersion string `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
-	PreviousReleaseTag     string `kong:"placeholder=TAG,help=${prev_tag_help}"`
-	GithubToken            string `kong:"required,hidden,env=GITHUB_TOKEN"`
-	CreateTag              bool   `kong:"help=${create_tag_help}"`
-	AllowFirstRelease      bool   `kong:"help=${allow_first_release_help}"`
+	Repo                   string      `kong:"arg,required,help=${repo_help}"`
+	Ref                    string      `kong:"short=r,default=master,help=${ref_help}"`
+	PreviousReleaseVersion string      `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
+	PreviousReleaseTag     string      `kong:"placeholder=TAG,help=${prev_tag_help}"`
+	GithubToken            string      `kong:"required,hidden,env=GITHUB_TOKEN"`
+	CreateTag              bool        `kong:"help=${create_tag_help},group=foo"`
+	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help},group=foo"`
+	Version                versionFlag `kong:"help=${version_help}"`
+}
+
+type versionFlag bool
+
+func (d versionFlag) BeforeApply(k *kong.Context) error {
+	k.Printf("version %s", version)
+	k.Kong.Exit(0)
+	return nil
 }
 
 func main() {
@@ -51,6 +64,7 @@ func main() {
 		kongVars,
 		kong.Description(mainHelp),
 	)
+
 	_, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 	repoParts := strings.Split(cli.Repo, "/")
