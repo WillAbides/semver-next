@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
@@ -13,18 +14,45 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var kongVars = kong.Vars{
+	"repo_help": `GitHub repository in "<owner>/<repo>" format. e.g. WillAbides/semver-next`,
+
+	"prev_tag_help": `The git tag from the previous release. This should rarely be needed. When this is unset, it uses 
+the tag of the release marked "latest release" on the GitHub releases page.`,
+
+	"prev_version_help": `The version of the previous release in semver format. This may be necessary when release tags 
+don't follow semver format.`,
+
+	"ref_help": `The tag, branch or commit sha that will be tagged for the next release.`,
+
+	"allow_first_release_help": `When there is no previous version to be found, return 0.1.0 instead of erroring out.`,
+
+	"create_tag_help": `Create a tag for the new release.`,
+}
+
+var mainHelp = `
+semver-next will analyze the merged pull requests and commits since a GitHub repository's 
+latest release to determine the next release version based on semantic version rules.
+`
+
 var cli struct {
-	Repo               string `kong:"arg,required,help='owner/repo'"`
-	LastReleaseTag     string `kong:"short=t"`
-	Ref                string `kong:"short=r,default=master"`
-	LastReleaseVersion string `kong:"short=v"`
-	GithubToken        string `kong:"required,hidden,env=GITHUB_TOKEN"`
-	AllowFirstRelease  bool   `kong:"help='When there is no previous version to be found, return 0.1.0 instead of erroring out.'"`
-	CreateTag          bool   `kong:"create the new tag on github"`
+	Repo                   string `kong:"arg,required,help=${repo_help}"`
+	Ref                    string `kong:"short=r,default=master,help=${ref_help}"`
+	PreviousReleaseVersion string `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
+	PreviousReleaseTag     string `kong:"placeholder=TAG,help=${prev_tag_help}"`
+	GithubToken            string `kong:"required,hidden,env=GITHUB_TOKEN"`
+	CreateTag              bool   `kong:"help=${create_tag_help}"`
+	AllowFirstRelease      bool   `kong:"help=${allow_first_release_help}"`
 }
 
 func main() {
-	kong.Parse(&cli)
+	parser := kong.Must(
+		&cli,
+		kongVars,
+		kong.Description(mainHelp),
+	)
+	_, err := parser.Parse(os.Args[1:])
+	parser.FatalIfErrorf(err)
 	repoParts := strings.Split(cli.Repo, "/")
 	if len(repoParts) != 2 {
 		panic("Repo must be in the form of owner/repo")
@@ -33,9 +61,9 @@ func main() {
 	repo := repoParts[1]
 
 	var lastReleaseVersion *semver.Version
-	if cli.LastReleaseVersion != "" {
+	if cli.PreviousReleaseVersion != "" {
 		var err error
-		lastReleaseVersion, err = semver.NewVersion(cli.LastReleaseVersion)
+		lastReleaseVersion, err = semver.NewVersion(cli.PreviousReleaseVersion)
 		if err != nil {
 			log.Fatal("last-release-version must be a valid semver")
 		}
@@ -51,7 +79,7 @@ func main() {
 		),
 	)
 
-	lastTag := cli.LastReleaseTag
+	lastTag := cli.PreviousReleaseTag
 	var lastReleaseName string
 
 	if lastTag == "" {
