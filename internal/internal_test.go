@@ -208,6 +208,6 @@ this is not a breaking change: really
 		},
 	}
 	ver := semver.MustParse("1.2.3")
-	got := NextVersion(*ver, commits)
+	got := NextVersion(*ver, commits, ChangeLevelNoChange, ChangeLevelMajor)
 	assert.Equal(t, "2.0.0", got.String())
 }
