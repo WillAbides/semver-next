@@ -203,7 +203,7 @@ func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo 
 	}, nil
 }
 
-func NextVersion(version semver.Version, commits []Commit) semver.Version {
+func NextVersion(version semver.Version, commits []Commit, minBump, maxBump ChangeLevel) semver.Version {
 	if len(commits) == 0 {
 		return version
 	}
@@ -211,6 +211,8 @@ func NextVersion(version semver.Version, commits []Commit) semver.Version {
 	for _, commit := range commits {
 		level = level.Greater(commit.level())
 	}
+	level = level.Greater(minBump)
+	level = level.Lesser(maxBump)
 	switch level {
 	case ChangeLevelPatch:
 		return version.IncPatch()
@@ -277,6 +279,14 @@ const (
 	ChangeLevelMinor
 	ChangeLevelMajor
 )
+
+//Lesser returns whichever is lower, c or other
+func (c ChangeLevel) Lesser(other ChangeLevel) ChangeLevel {
+	if other < c {
+		return other
+	}
+	return c
+}
 
 //Greater returns whichever is higher, c or other
 func (c ChangeLevel) Greater(other ChangeLevel) ChangeLevel {

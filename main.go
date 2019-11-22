@@ -32,6 +32,15 @@ don't follow semver format.`,
 	"create_tag_help": `Create a tag for the new release.`,
 
 	"version_help": `output semver-next's version and exit`,
+
+	"max_bump_help": `The maximum amount to bump the version. Valid values are MAJOR, MINOR and PATCH`,
+
+	"max_bump_enum": `MAJOR,MINOR,PATCH`,
+
+	"min_bump_help": `The maximum amount to bump the version. Valid values are MAJOR, MINOR, PATCH and NONE. This will
+be ignored when there are no commits between the previous release and the target ref.`,
+
+	"min_bump_enum": `MAJOR,MINOR,PATCH,NONE`,
 }
 
 var mainHelp = `
@@ -44,6 +53,8 @@ var cli struct {
 	Ref                    string      `kong:"short=r,default=master,help=${ref_help}"`
 	PreviousReleaseVersion string      `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
 	PreviousReleaseTag     string      `kong:"placeholder=TAG,help=${prev_tag_help}"`
+	MaxBump                string      `kong:"enum=${max_bump_enum},help=${max_bump_help},default=MAJOR"`
+	MinBump                string      `kong:"enum=${min_bump_enum},help=${max_bump_help},default=PATCH"`
 	GithubToken            string      `kong:"required,hidden,env=GITHUB_TOKEN"`
 	CreateTag              bool        `kong:"help=${create_tag_help},group=foo"`
 	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help},group=foo"`
@@ -56,6 +67,13 @@ func (d versionFlag) BeforeApply(k *kong.Context) error {
 	k.Printf("version %s", version)
 	k.Kong.Exit(0)
 	return nil
+}
+
+var changeLevels = map[string]internal.ChangeLevel{
+	"MAJOR": internal.ChangeLevelMajor,
+	"MINOR": internal.ChangeLevelMinor,
+	"PATCH": internal.ChangeLevelPatch,
+	"NONE":  internal.ChangeLevelNoChange,
 }
 
 func main() {
@@ -127,7 +145,7 @@ func main() {
 		panic(err)
 	}
 
-	newVersion := internal.NextVersion(*lastReleaseVersion, commits)
+	newVersion := internal.NextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
 	fmt.Println(newVersion)
 
 	if cli.CreateTag {
