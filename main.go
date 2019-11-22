@@ -62,7 +62,6 @@ func main() {
 
 	var lastReleaseVersion *semver.Version
 	if cli.PreviousReleaseVersion != "" {
-		var err error
 		lastReleaseVersion, err = semver.NewVersion(cli.PreviousReleaseVersion)
 		if err != nil {
 			log.Fatal("last-release-version must be a valid semver")
@@ -83,7 +82,8 @@ func main() {
 	var lastReleaseName string
 
 	if lastTag == "" {
-		lr, err := internal.LatestRelease(ctx, client, owner, repo)
+		var lr *internal.Release
+		lr, err = internal.LatestRelease(ctx, client, owner, repo)
 		if err != nil {
 			log.Fatalf("could not get latest tag: %v", err)
 		}
@@ -102,7 +102,6 @@ func main() {
 	}
 
 	if lastReleaseVersion == nil {
-		var err error
 		lastReleaseVersion, err = calcLastReleaseVersion(lastTag, lastReleaseName)
 		if err != nil || lastReleaseVersion == nil {
 			log.Fatal("could not calculate previous release version and allow-first-release is not set")
