@@ -13,6 +13,10 @@ semver-next also looks at commit messages and evaluates their prefixes based on 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification. Commits in a PR are evaluated
 separately from the PR's labels. Whichever results in a bigger version change will be used.
 
+Your local git clone is not used by semver-next. Instead it gets all PR data and commit messages through the GitHub API.
+Because of this, you do need to set the GITHUB_TOKEN environment variable so that semver-next can authenticate with
+GitHub.
+
 ## Usage
 
 ```
