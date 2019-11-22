@@ -204,6 +204,9 @@ func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo 
 }
 
 func NextVersion(version semver.Version, commits []Commit) semver.Version {
+	if len(commits) == 0 {
+		return version
+	}
 	level := ChangeLevelNoChange
 	for _, commit := range commits {
 		level = level.Greater(commit.level())
