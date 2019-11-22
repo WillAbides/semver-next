@@ -220,9 +220,10 @@ func NextVersion(version semver.Version, commits []Commit, minBump, maxBump Chan
 		return version.IncMinor()
 	case ChangeLevelMajor:
 		return version.IncMajor()
-	default:
-		return version.IncPatch()
+	case ChangeLevelNoChange:
+		return version
 	}
+	return version
 }
 
 func (c Commit) level() ChangeLevel {
