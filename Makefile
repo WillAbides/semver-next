@@ -7,20 +7,21 @@ bin/semver-next: gobuildcache
 	go build -ldflags "-s -w" -o bin/semver-next .
 bins += bin/semver-next
 
-bin/bindownloader:
-	./script/bootstrap-bindownloader -b bin
-bins += bin/bindownloader
+bin/bindown:
+	./script/bootstrap-bindown.sh -b bin
+bins += bin/bindown
+cleanup_extras += bin/.bindown
 
-bin/golangci-lint: bin/bindownloader
-	bin/bindownloader $@
+bin/golangci-lint: bin/bindown
+	bin/bindown download $@
 bins += bin/golangci-lint
 
-bin/gobin: bin/bindownloader
-	bin/bindownloader $@
+bin/gobin: bin/bindown
+	bin/bindown download $@
 bins += bin/gobin
 
-bin/goreleaser: bin/bindownloader
-	bin/bindownloader $@
+bin/goreleaser: bin/bindown
+	bin/bindown download $@
 bins += bin/goreleaser
 
 MOCKGEN_REF := 9fa652df1129bef0e734c9cf9bf6dbae9ef3b9fa
