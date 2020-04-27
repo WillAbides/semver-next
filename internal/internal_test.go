@@ -85,11 +85,12 @@ func Test_buildCommit(t *testing.T) {
 		}, &github.Response{}, nil,
 	)
 	want := Commit{
-		message: "commit message",
-		pulls: []pull{
+		Sha:     "deadbeef",
+		Message: "commit message",
+		Pulls: []pull{
 			{
-				number: 12,
-				labels: []string{"label 1", "label 2"},
+				Number: 12,
+				Labels: []string{"label 1", "label 2"},
 			},
 		},
 	}
@@ -124,11 +125,11 @@ func TestDiffCommits(t *testing.T) {
 		},
 	}
 	wantCommit := Commit{
-		message: "foo",
-		pulls: []pull{
+		Message: "foo",
+		Pulls: []pull{
 			{
-				number: 12,
-				labels: []string{"label 1", "label 2"},
+				Number: 12,
+				Labels: []string{"label 1", "label 2"},
 			},
 		},
 	}
@@ -187,22 +188,22 @@ breaking: omg
 func Test_nextVersion(t *testing.T) {
 	commits := []Commit{
 		{
-			message: "nothing",
+			Message: "nothing",
 		},
 		{
-			message: "",
+			Message: "",
 		},
 		{},
 		{
-			message: `feat: omg
+			Message: `feat: omg
 this is not a breaking change: really
 `,
 		},
 		{
-			message: `foo`,
-			pulls: []pull{
+			Message: `foo`,
+			Pulls: []pull{
 				{
-					labels: []string{"foo", "bar", "enhancement", "breaking change"},
+					Labels: []string{"foo", "bar", "enhancement", "breaking change"},
 				},
 			},
 		},

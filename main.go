@@ -41,6 +41,8 @@ don't follow semver format.`,
 be ignored when there are no commits between the previous release and the target ref.`,
 
 	"min_bump_enum": `MAJOR,MINOR,PATCH,NONE`,
+
+	"require_labels_help": `Require labels on pull requests when commits come from PRs`,
 }
 
 var mainHelp = `
@@ -59,6 +61,7 @@ var cli struct {
 	CreateTag              bool        `kong:"help=${create_tag_help},group=foo"`
 	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help},group=foo"`
 	Version                versionFlag `kong:"help=${version_help}"`
+	RequireLabels          bool        `kong:"help=${require_labels_help}"`
 }
 
 type versionFlag bool
@@ -143,6 +146,23 @@ func main() {
 	commits, err := internal.DiffCommits(ctx, client, lastTag, cli.Ref, owner, repo, nil)
 	if err != nil {
 		panic(err)
+	}
+
+	unlabeledCommits := internal.UnlabeledCommits(commits)
+	var unlabeledMsg []string
+	for _, commit := range unlabeledCommits {
+		if len(commit.Pulls) == 0 {
+			continue
+		}
+		msgLine := fmt.Sprintf("%s: ", commit.Sha)
+		for _, pull := range commit.Pulls {
+			msgLine += fmt.Sprintf("#%d ", pull.Number)
+		}
+		unlabeledMsg = append(unlabeledMsg, msgLine)
+	}
+
+	if len(unlabeledMsg) > 0 && cli.RequireLabels {
+		log.Fatalf("some commits do not have a PR label\n%s", strings.Join(unlabeledMsg, "\n"))
 	}
 
 	newVersion := internal.NextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
