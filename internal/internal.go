@@ -27,11 +27,13 @@ var labelLevels = map[string]ChangeLevel{
 	"breaking change": ChangeLevelMajor,
 	"bug":             ChangeLevelPatch,
 	"enhancement":     ChangeLevelMinor,
+	"patch":           ChangeLevelPatch,
 }
 
 type Commit struct {
-	message string
-	pulls   []pull
+	Sha     string
+	Message string
+	Pulls   []pull
 }
 
 type Release struct {
@@ -193,13 +195,14 @@ func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo 
 			lbls[i] = label.GetName()
 		}
 		pls[pullIt] = pull{
-			number: pl.GetNumber(),
-			labels: lbls,
+			Number: pl.GetNumber(),
+			Labels: lbls,
 		}
 	}
 	return Commit{
-		message: repoCommit.GetCommit().GetMessage(),
-		pulls:   pls,
+		Sha:     repoCommit.GetSHA(),
+		Message: repoCommit.GetCommit().GetMessage(),
+		Pulls:   pls,
 	}, nil
 }
 
@@ -226,18 +229,37 @@ func NextVersion(version semver.Version, commits []Commit, minBump, maxBump Chan
 	return version
 }
 
+func UnlabeledCommits(commits []Commit) []Commit {
+	result := make([]Commit, 0, len(commits))
+commitsLoop:
+	for _, commit := range commits {
+		if len(commit.Pulls) == 0 {
+			continue commitsLoop
+		}
+		for _, p := range commit.Pulls {
+			for _, label := range p.Labels {
+				if _, ok := labelLevels[label]; ok {
+					continue commitsLoop
+				}
+			}
+		}
+		result = append(result, commit)
+	}
+	return result
+}
+
 func (c Commit) level() ChangeLevel {
-	level := parseCommitMessage(c.message)
-	for _, p := range c.pulls {
+	level := parseCommitMessage(c.Message)
+	for _, p := range c.Pulls {
 		level = level.Greater(p.level())
 	}
 	return level
 }
 
-func parseCommitMessage(message string) ChangeLevel {
-	level := ChangeLevelNoChange
+func commitMessagePrefixes(message string) []string {
 	message = strings.ReplaceAll(message, "\r\n", "\n")
 	lines := strings.Split(message, "\n")
+	result := make([]string, 0, len(lines))
 	for _, line := range lines {
 		if !strings.ContainsRune(line, ':') {
 			continue
@@ -245,23 +267,31 @@ func parseCommitMessage(message string) ChangeLevel {
 		prefix := strings.Split(line, ":")[0]
 		prefix = strings.TrimSpace(prefix)
 		prefix = strings.ToLower(prefix)
-		prefixLevel, ok := prefixLevels[prefix]
-		if !ok {
-			continue
+		_, ok := prefixLevels[prefix]
+		if ok {
+			result = append(result, prefix)
 		}
-		level = level.Greater(prefixLevel)
+	}
+	return result
+}
+
+func parseCommitMessage(message string) ChangeLevel {
+	level := ChangeLevelNoChange
+	prefixes := commitMessagePrefixes(message)
+	for _, prefix := range prefixes {
+		level = level.Greater(prefixLevels[prefix])
 	}
 	return level
 }
 
 type pull struct {
-	number int
-	labels []string
+	Number int
+	Labels []string
 }
 
 func (p pull) level() ChangeLevel {
 	level := ChangeLevelNoChange
-	for _, label := range p.labels {
+	for _, label := range p.Labels {
 		label = strings.ToLower(strings.TrimSpace(label))
 		labelLevel, ok := labelLevels[label]
 		if !ok {
