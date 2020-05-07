@@ -56,6 +56,7 @@ type GithubRepositoriesService interface {
 
 type GithubGitService interface {
 	CreateRef(ctx context.Context, owner string, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
+	CreateTag(ctx context.Context, owner string, repo string, tag *github.Tag) (*github.Tag, *github.Response, error)
 }
 
 func WrapClient(client *github.Client) *ClientWrapper {
@@ -106,11 +107,22 @@ func CreateTag(ctx context.Context, client *ClientWrapper, owner, repo, tag, tar
 	if err != nil {
 		return err
 	}
+	tagObj, _, err := client.git().CreateTag(ctx, owner, repo, &github.Tag{
+		Tag:     &tag,
+		Message: &tag,
+		Object: &github.GitObject{
+			Type: github.String("commit"),
+			SHA:  &targetSha,
+		},
+	})
+	if err != nil {
+		return err
+	}
 	tagRef := fmt.Sprintf("refs/tags/%s", tag)
 	_, _, err = client.git().CreateRef(ctx, owner, repo, &github.Reference{
 		Ref: github.String(tagRef),
 		Object: &github.GitObject{
-			SHA: github.String(targetSha),
+			SHA: tagObj.SHA,
 		},
 	})
 	return err
