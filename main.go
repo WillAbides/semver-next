@@ -43,6 +43,8 @@ be ignored when there are no commits between the previous release and the target
 	"min_bump_enum": `MAJOR,MINOR,PATCH,NONE`,
 
 	"require_labels_help": `Require labels on pull requests when commits come from PRs`,
+
+	"require_change_help": `Exit code is 10 if there have been no version changes since the last tag`,
 }
 
 var mainHelp = `
@@ -62,6 +64,7 @@ var cli struct {
 	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help},group=foo"`
 	Version                versionFlag `kong:"help=${version_help}"`
 	RequireLabels          bool        `kong:"help=${require_labels_help}"`
+	RequireChange          bool        `kong:"help=${require_change_help}"`
 }
 
 type versionFlag bool
@@ -166,7 +169,11 @@ func main() {
 	}
 
 	newVersion := internal.NextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
+
 	fmt.Println(newVersion)
+	if cli.RequireChange && newVersion.Equal(lastReleaseVersion) {
+		parser.Exit(10)
+	}
 
 	if cli.CreateTag {
 		err = internal.CreateTag(ctx, client, owner, repo, fmt.Sprintf("v%s", newVersion), cli.Ref)
