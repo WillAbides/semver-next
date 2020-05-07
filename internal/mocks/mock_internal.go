@@ -175,3 +175,19 @@ func (mr *MockGithubGitServiceMockRecorder) CreateRef(ctx, owner, repo, ref inte
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRef", reflect.TypeOf((*MockGithubGitService)(nil).CreateRef), ctx, owner, repo, ref)
 }
+
+// CreateTag mocks base method
+func (m *MockGithubGitService) CreateTag(ctx context.Context, owner, repo string, tag *github.Tag) (*github.Tag, *github.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTag", ctx, owner, repo, tag)
+	ret0, _ := ret[0].(*github.Tag)
+	ret1, _ := ret[1].(*github.Response)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CreateTag indicates an expected call of CreateTag
+func (mr *MockGithubGitServiceMockRecorder) CreateTag(ctx, owner, repo, tag interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTag", reflect.TypeOf((*MockGithubGitService)(nil).CreateTag), ctx, owner, repo, tag)
+}

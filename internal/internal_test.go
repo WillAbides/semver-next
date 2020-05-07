@@ -21,11 +21,22 @@ func TestCreateTag(t *testing.T) {
 		_git:          mockGitSvc,
 		_repositories: mockReposSvc,
 	}
-	mockReposSvc.EXPECT().GetCommitSHA1(ctx, "foo", "bar", "deadbeef", "").Return("4ee551021fc59c2d45c2d7a91b1562914e4dff61", nil, nil)
+	newTag := "newtag"
+	commitSha := "4ee551021fc59c2d45c2d7a91b1562914e4dff61"
+	tagObjSha := "7065ecdd3f84fc92fe8b7d3fb3927a0974f5dc37"
+	mockReposSvc.EXPECT().GetCommitSHA1(ctx, "foo", "bar", "deadbeef", "").Return(commitSha, nil, nil)
+	mockGitSvc.EXPECT().CreateTag(ctx, "foo", "bar", &github.Tag{
+		Tag:     &newTag,
+		Message: &newTag,
+		Object: &github.GitObject{
+			Type: github.String("commit"),
+			SHA:  &commitSha,
+		},
+	}).Return(&github.Tag{SHA: &tagObjSha}, nil, nil)
 	mockGitSvc.EXPECT().CreateRef(ctx, "foo", "bar", &github.Reference{
 		Ref: github.String("refs/tags/newtag"),
 		Object: &github.GitObject{
-			SHA: github.String("4ee551021fc59c2d45c2d7a91b1562914e4dff61"),
+			SHA: &tagObjSha,
 		},
 	})
 	err := CreateTag(ctx, wrapper, "foo", "bar", "newtag", "deadbeef")
