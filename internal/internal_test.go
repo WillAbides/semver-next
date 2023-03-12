@@ -144,7 +144,7 @@ func TestDiffCommits(t *testing.T) {
 			},
 		},
 	}
-	bc := func(_ context.Context, _ *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
+	bc := func(_ context.Context, _ *ClientWrapper, owner, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
 		t.Helper()
 		assert.Equal(t, exOwner, owner)
 		assert.Equal(t, exRepo, repo)
@@ -181,7 +181,8 @@ func Test_parseCommitMessage(t *testing.T) {
 		{message: `omg`, want: ChangeLevelNoChange},
 		{message: ``, want: ChangeLevelNoChange},
 		{message: `breaking: omg`, want: ChangeLevelMajor},
-		{message: `
+		{
+			message: `
 foo: bar
 breaking: omg
 

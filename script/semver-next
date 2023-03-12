@@ -6,4 +6,4 @@ CDPATH="" cd -- "$(dirname -- "$(dirname -- "$0")")"
 
 make -s bin/semver-next
 
-bin/semver-next $@
+bin/semver-next "$@"
