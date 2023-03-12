@@ -1,41 +1,37 @@
-GOCMD=go
-GOBUILD=$(GOCMD) build
-
 .PHONY: gobuildcache
+
+bin/bootstrap-bindown.sh: Makefile
+	mkdir -p bin && \
+	curl -sSfL https://github.com/WillAbides/bindown/releases/download/v3.10.1/bootstrap-bindown.sh > bin/bootstrap-bindown.sh && \
+	chmod +x bin/bootstrap-bindown.sh
 
 bin/semver-next: gobuildcache
 	go build -ldflags "-s -w" -o bin/semver-next .
-bins += bin/semver-next
 
-bin/bindown:
-	./script/bootstrap-bindown.sh -b bin
-bins += bin/bindown
-cleanup_extras += bin/.bindown
+bin/bindown: bin/bootstrap-bindown.sh
+	bin/bootstrap-bindown.sh
 
-bin/golangci-lint: bin/bindown
-	bin/bindown download $@
-bins += bin/golangci-lint
+bin/golangci-lint: bin/bindown .bindown.yaml
+	bin/bindown install $(notdir $@)
 
-bin/gobin: bin/bindown
-	bin/bindown download $@
-bins += bin/gobin
+bin/goreleaser: bin/bindown .bindown.yaml
+	bin/bindown install $(notdir $@)
 
-bin/goreleaser: bin/bindown
-	bin/bindown download $@
-bins += bin/goreleaser
+bin/mockgen: bin/bindown .bindown.yaml
+	bin/bindown install $(notdir $@)
 
-MOCKGEN_REF := 9fa652df1129bef0e734c9cf9bf6dbae9ef3b9fa
-bin/mockgen: bin/gobin
+bin/gofumpt: bin/bindown .bindown.yaml
+	bin/bindown install $(notdir $@)
+
+bin/shellcheck: bin/bindown .bindown.yaml
+	bin/bindown install $(notdir $@)
+
+GOIMPORTS_REF := v0.7.0
+bin/goimports: Makefile
 	GOBIN=${CURDIR}/bin \
-	bin/gobin github.com/golang/mock/mockgen@$(MOCKGEN_REF);
-bins += bin/mockgen
+	go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_REF)
 
-GOIMPORTS_REF := 8aaa1484dc108aa23dcf2d4a09371c0c9e280f6b
-bin/goimports: bin/gobin
+HANDCRAFTED_REV := 082e94edadf89c33db0afb48889c8419a2cb46a9
+bin/handcrafted:
 	GOBIN=${CURDIR}/bin \
-	bin/gobin golang.org/x/tools/cmd/goimports@$(GOIMPORTS_REF)
-bins += bin/goimports
-
-.PHONY: clean
-clean:
-	rm -rf $(bins) $(cleanup_extras)
+	go install github.com/willabides/handcrafted@$(HANDCRAFTED_REV)

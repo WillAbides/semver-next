@@ -50,13 +50,13 @@ type GithubPullRequestsService interface {
 type GithubRepositoriesService interface {
 	ListCommits(ctx context.Context, owner, repo string, opt *github.CommitsListOptions) ([]*github.RepositoryCommit, *github.Response, error)
 	GetCommitSHA1(ctx context.Context, owner, repo, ref, lastSHA string) (string, *github.Response, error)
-	CompareCommits(ctx context.Context, owner, repo string, base, head string) (*github.CommitsComparison, *github.Response, error)
+	CompareCommits(ctx context.Context, owner, repo, base, head string) (*github.CommitsComparison, *github.Response, error)
 	GetLatestRelease(ctx context.Context, owner, repo string) (*github.RepositoryRelease, *github.Response, error)
 }
 
 type GithubGitService interface {
-	CreateRef(ctx context.Context, owner string, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
-	CreateTag(ctx context.Context, owner string, repo string, tag *github.Tag) (*github.Tag, *github.Response, error)
+	CreateRef(ctx context.Context, owner, repo string, ref *github.Reference) (*github.Reference, *github.Response, error)
+	CreateTag(ctx context.Context, owner, repo string, tag *github.Tag) (*github.Tag, *github.Response, error)
 }
 
 func WrapClient(client *github.Client) *ClientWrapper {
@@ -147,7 +147,7 @@ func LatestRelease(ctx context.Context, client *ClientWrapper, owner, repo strin
 	}, nil
 }
 
-type commitBuilder func(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error)
+type commitBuilder func(ctx context.Context, client *ClientWrapper, owner, repo string, repoCommit github.RepositoryCommit) (Commit, error)
 
 func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, owner, repo string, bc commitBuilder) ([]Commit, error) {
 	if bc == nil {
@@ -193,7 +193,7 @@ func DiffCommits(ctx context.Context, client *ClientWrapper, oldTag, newRef, own
 	return commits, nil
 }
 
-func buildCommit(ctx context.Context, client *ClientWrapper, owner string, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
+func buildCommit(ctx context.Context, client *ClientWrapper, owner, repo string, repoCommit github.RepositoryCommit) (Commit, error) {
 	commitPulls, _, err := client.pullRequests().ListPullRequestsWithCommit(ctx, owner, repo, repoCommit.GetSHA(), &github.PullRequestListOptions{
 		State: "merged",
 	})
@@ -323,7 +323,7 @@ const (
 	ChangeLevelMajor
 )
 
-//Lesser returns whichever is lower, c or other
+// Lesser returns whichever is lower, c or other
 func (c ChangeLevel) Lesser(other ChangeLevel) ChangeLevel {
 	if other < c {
 		return other
@@ -331,7 +331,7 @@ func (c ChangeLevel) Lesser(other ChangeLevel) ChangeLevel {
 	return c
 }
 
-//Greater returns whichever is higher, c or other
+// Greater returns whichever is higher, c or other
 func (c ChangeLevel) Greater(other ChangeLevel) ChangeLevel {
 	if other > c {
 		return other

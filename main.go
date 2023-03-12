@@ -183,7 +183,7 @@ func main() {
 	}
 }
 
-func calcLastReleaseVersion(lastTag string, lastReleaseName string) (*semver.Version, error) {
+func calcLastReleaseVersion(lastTag, lastReleaseName string) (*semver.Version, error) {
 	version, err := semver.NewVersion(lastTag)
 	if err == nil {
 		return version, nil
