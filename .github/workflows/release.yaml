@@ -1,11 +1,9 @@
 name: release
 on:
-  pull_request:
-    types:
-      - labeled
   push:
     branches:
       - main
+  workflow_dispatch:
 jobs:
   release:
     runs-on: ubuntu-latest
