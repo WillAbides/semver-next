@@ -12,6 +12,14 @@ builds:
     ldflags:
       - -s -w -X main.version={{.Version}}
 archives:
+  - id: tar.gz
+    builds:
+      - semver-next
+    format: tar.gz
+  - id: binary
+    builds:
+      - semver-next
+    format: binary
 checksum:
   name_template: 'checksums.txt'
 snapshot:
