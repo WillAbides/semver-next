@@ -29,13 +29,15 @@ Arguments:
   <repo>    GitHub repository in "<owner>/<repo>" format. e.g. WillAbides/semver-next
 
 Flags:
-      --help                                Show context-sensitive help.
-  -r, --ref="master"                        The tag, branch or commit sha that will be tagged for the next release.
+  -h, --help                                Show context-sensitive help.
+  -r, --ref=STRING                          The tag, branch or commit sha that will be tagged for the next release.
+      --check-pr=INT                        Check whether the pull request will be valid if merged. Either the PR has a
+                                            label or all commits have good prefixes.
   -v, --previous-release-version=VERSION    The version of the previous release in semver format. This may be necessary
                                             when release tags don't follow semver format.
-      --previous-release-tag=TAG            The git tag from the previous release. This should rarely be needed. When
-                                            this is unset, it uses the tag of the release marked "latest release" on the
-                                            GitHub releases page.
+      --previous-release-tag=TAG            The git tag from the previous release. This should rarely be needed.
+                                            When this is unset, it uses the tag of the release marked "latest release"
+                                            on the GitHub releases page.
       --max-bump="MAJOR"                    The maximum amount to bump the version. Valid values are MAJOR, MINOR and
                                             PATCH
       --min-bump="PATCH"                    The maximum amount to bump the version. Valid values are MAJOR, MINOR and
@@ -44,4 +46,6 @@ Flags:
       --allow-first-release                 When there is no previous version to be found, return 0.1.0 instead of
                                             erroring out.
       --version                             output semver-next's version and exit
+      --require-labels                      Require labels on pull requests when commits come from PRs
+      --require-change                      Exit code is 10 if there have been no version changes since the last tag
 ```
