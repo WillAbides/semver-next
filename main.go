@@ -60,8 +60,8 @@ var cli struct {
 	MaxBump                string      `kong:"enum=${max_bump_enum},help=${max_bump_help},default=MAJOR"`
 	MinBump                string      `kong:"enum=${min_bump_enum},help=${max_bump_help},default=PATCH"`
 	GithubToken            string      `kong:"required,hidden,env=GITHUB_TOKEN"`
-	CreateTag              bool        `kong:"help=${create_tag_help},group=foo"`
-	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help},group=foo"`
+	CreateTag              bool        `kong:"help=${create_tag_help}"`
+	AllowFirstRelease      bool        `kong:"help=${allow_first_release_help}"`
 	Version                versionFlag `kong:"help=${version_help}"`
 	RequireLabels          bool        `kong:"help=${require_labels_help}"`
 	RequireChange          bool        `kong:"help=${require_change_help}"`
