@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 jobs:
   releasable:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: WillAbides/setup-go-faster@v1
@@ -29,8 +29,4 @@ jobs:
       - name: check releasable
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          #!/bin/sh
-          set -e
-          make bin/semver-next
-          bin/semver-next "$GITHUB_REPOSITORY" -r "$GITHUB_SHA" --require-labels
+        run: script/semver-next "$GITHUB_REPOSITORY" -r "$GITHUB_SHA" --require-labels
