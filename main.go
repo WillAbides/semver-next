@@ -8,9 +8,8 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/WillAbides/semver-next/internal"
 	"github.com/alecthomas/kong"
-	"github.com/google/go-github/v28/github"
+	"github.com/google/go-github/v52/github"
 	"golang.org/x/oauth2"
 )
 
@@ -75,11 +74,11 @@ func (d versionFlag) BeforeApply(k *kong.Context) error {
 	return nil
 }
 
-var changeLevels = map[string]internal.ChangeLevel{
-	"MAJOR": internal.ChangeLevelMajor,
-	"MINOR": internal.ChangeLevelMinor,
-	"PATCH": internal.ChangeLevelPatch,
-	"NONE":  internal.ChangeLevelNoChange,
+var changeLevels = map[string]changeLevel{
+	"MAJOR": changeLevelMajor,
+	"MINOR": changeLevelMinor,
+	"PATCH": changeLevelPatch,
+	"NONE":  changeLevelNoChange,
 }
 
 func main() {
@@ -108,26 +107,24 @@ func main() {
 
 	ctx := context.Background()
 
-	client := internal.WrapClient(
-		github.NewClient(
-			oauth2.NewClient(
-				ctx,
-				oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cli.GithubToken})),
-		),
+	client := github.NewClient(
+		oauth2.NewClient(
+			ctx,
+			oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cli.GithubToken})),
 	)
 
 	lastTag := cli.PreviousReleaseTag
 	var lastReleaseName string
 
 	if lastTag == "" {
-		var lr *internal.Release
-		lr, err = internal.LatestRelease(ctx, client, owner, repo)
+		var lr *release
+		lr, err = getLatestRelease(ctx, client.Repositories, owner, repo)
 		if err != nil {
 			log.Fatalf("could not get latest tag: %v", err)
 		}
 		if lr != nil {
-			lastReleaseName = lr.Name
-			lastTag = lr.Tag
+			lastReleaseName = lr.name
+			lastTag = lr.tag
 		}
 	}
 
@@ -146,20 +143,20 @@ func main() {
 		}
 	}
 
-	commits, err := internal.DiffCommits(ctx, client, lastTag, cli.Ref, owner, repo, nil)
+	commits, err := diffCommits(ctx, client.Repositories, client.PullRequests, lastTag, cli.Ref, owner, repo, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	unlabeledCommits := internal.UnlabeledCommits(commits)
+	unlabeled := getUnlabeledCommits(commits)
 	var unlabeledMsg []string
-	for _, commit := range unlabeledCommits {
-		if len(commit.Pulls) == 0 {
+	for _, c := range unlabeled {
+		if len(c.pulls) == 0 {
 			continue
 		}
-		msgLine := fmt.Sprintf("%s: ", commit.Sha)
-		for _, pull := range commit.Pulls {
-			msgLine += fmt.Sprintf("#%d ", pull.Number)
+		msgLine := fmt.Sprintf("%s: ", c.sha)
+		for _, pull := range c.pulls {
+			msgLine += fmt.Sprintf("#%d ", pull.number)
 		}
 		unlabeledMsg = append(unlabeledMsg, msgLine)
 	}
@@ -168,7 +165,7 @@ func main() {
 		log.Fatalf("some commits do not have a PR label\n%s", strings.Join(unlabeledMsg, "\n"))
 	}
 
-	newVersion := internal.NextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
+	newVersion := nextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
 
 	fmt.Println(newVersion)
 	if cli.RequireChange && newVersion.Equal(lastReleaseVersion) {
@@ -176,7 +173,7 @@ func main() {
 	}
 
 	if cli.CreateTag {
-		err = internal.CreateTag(ctx, client, owner, repo, fmt.Sprintf("v%s", newVersion), cli.Ref)
+		err = createTag(ctx, client.Repositories, client.Git, owner, repo, fmt.Sprintf("v%s", newVersion), cli.Ref)
 		if err != nil {
 			log.Fatal("could not create tag.")
 		}
