@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -51,7 +50,7 @@ semver-next will analyze the merged pull requests and commits since a GitHub rep
 latest release to determine the next release version based on semantic version rules.
 `
 
-var cli struct {
+type cmd struct {
 	Repo                   string      `kong:"arg,required,help=${repo_help}"`
 	Ref                    string      `kong:"short=r,default=master,help=${ref_help}"`
 	PreviousReleaseVersion string      `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
@@ -64,6 +63,14 @@ var cli struct {
 	Version                versionFlag `kong:"help=${version_help}"`
 	RequireLabels          bool        `kong:"help=${require_labels_help}"`
 	RequireChange          bool        `kong:"help=${require_change_help}"`
+}
+
+func (c *cmd) repoName() string {
+	return strings.Split(c.Repo, "/")[1]
+}
+
+func (c *cmd) repoOwner() string {
+	return strings.Split(c.Repo, "/")[0]
 }
 
 type versionFlag bool
@@ -82,30 +89,15 @@ var changeLevels = map[string]changeLevel{
 }
 
 func main() {
-	parser := kong.Must(
-		&cli,
-		kongVars,
-		kong.Description(mainHelp),
-	)
-
-	_, err := parser.Parse(os.Args[1:])
+	ctx := context.Background()
+	var cli cmd
+	parser := kong.Must(&cli, kongVars, kong.Description(mainHelp))
+	k, err := parser.Parse(os.Args[1:])
 	parser.FatalIfErrorf(err)
 	repoParts := strings.Split(cli.Repo, "/")
 	if len(repoParts) != 2 {
 		panic("Repo must be in the form of owner/repo")
 	}
-	owner := repoParts[0]
-	repo := repoParts[1]
-
-	var lastReleaseVersion *semver.Version
-	if cli.PreviousReleaseVersion != "" {
-		lastReleaseVersion, err = semver.NewVersion(cli.PreviousReleaseVersion)
-		if err != nil {
-			log.Fatal("last-release-version must be a valid semver")
-		}
-	}
-
-	ctx := context.Background()
 
 	client := github.NewClient(
 		oauth2.NewClient(
@@ -113,14 +105,39 @@ func main() {
 			oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cli.GithubToken})),
 	)
 
+	newVersion, lastReleaseVersion, firstRelease, err := getSemver(ctx, client, &cli)
+	k.FatalIfErrorf(err)
+
+	fmt.Println(newVersion)
+	if !firstRelease && cli.RequireChange && newVersion.Equal(lastReleaseVersion) {
+		parser.Exit(10)
+	}
+
+	if cli.CreateTag {
+		tag := fmt.Sprintf("v%s", newVersion)
+		err = createTag(ctx, client.Repositories, client.Git, cli.repoOwner(), cli.repoName(), tag, cli.Ref)
+		k.FatalIfErrorf(err, "could not create tag")
+	}
+}
+
+func getSemver(ctx context.Context, ghClient *github.Client, cli *cmd) (version, latestRelease *semver.Version, firstRelease bool, _ error) {
+	var lastReleaseVersion *semver.Version
+	var err error
+	if cli.PreviousReleaseVersion != "" {
+		lastReleaseVersion, err = semver.NewVersion(cli.PreviousReleaseVersion)
+		if err != nil {
+			return nil, nil, false, fmt.Errorf("last-release-version must be a valid semver")
+		}
+	}
+
 	lastTag := cli.PreviousReleaseTag
 	var lastReleaseName string
 
 	if lastTag == "" {
 		var lr *release
-		lr, err = getLatestRelease(ctx, client.Repositories, owner, repo)
+		lr, err = getLatestRelease(ctx, ghClient.Repositories, cli.repoOwner(), cli.repoName())
 		if err != nil {
-			log.Fatalf("could not get latest tag: %v", err)
+			return nil, nil, false, fmt.Errorf("could not get latest tag: %v", err)
 		}
 		if lr != nil {
 			lastReleaseName = lr.name
@@ -130,22 +147,21 @@ func main() {
 
 	if lastTag == "" {
 		if cli.AllowFirstRelease {
-			fmt.Println("0.1.0")
-			return
+			return semver.New(0, 1, 0, "", ""), nil, true, nil
 		}
-		log.Fatal("could not find a previous tag and allow-first-release is not set.")
+		return nil, nil, false, fmt.Errorf("could not find a previous tag and allow-first-release is not set")
 	}
 
 	if lastReleaseVersion == nil {
 		lastReleaseVersion, err = calcLastReleaseVersion(lastTag, lastReleaseName)
 		if err != nil || lastReleaseVersion == nil {
-			log.Fatal("could not calculate previous release version and allow-first-release is not set")
+			return nil, nil, false, fmt.Errorf("could not calculate previous release version and allow-first-release is not set")
 		}
 	}
 
-	commits, err := diffCommits(ctx, client.Repositories, client.PullRequests, lastTag, cli.Ref, owner, repo, nil)
+	commits, err := diffCommits(ctx, ghClient.Repositories, ghClient.PullRequests, lastTag, cli.Ref, cli.repoOwner(), cli.repoName(), nil)
 	if err != nil {
-		panic(err)
+		return nil, nil, false, err
 	}
 
 	unlabeled := getUnlabeledCommits(commits)
@@ -155,39 +171,28 @@ func main() {
 			continue
 		}
 		msgLine := fmt.Sprintf("%s: ", c.sha)
-		for _, pull := range c.pulls {
-			msgLine += fmt.Sprintf("#%d ", pull.number)
+		for _, p := range c.pulls {
+			msgLine += fmt.Sprintf("#%d ", p.number)
 		}
 		unlabeledMsg = append(unlabeledMsg, msgLine)
 	}
 
 	if len(unlabeledMsg) > 0 && cli.RequireLabels {
-		log.Fatalf("some commits do not have a PR label\n%s", strings.Join(unlabeledMsg, "\n"))
+		return nil, nil, false, fmt.Errorf("some commits do not have a PR label\n%s", strings.Join(unlabeledMsg, "\n"))
 	}
 
 	newVersion := nextVersion(*lastReleaseVersion, commits, changeLevels[cli.MinBump], changeLevels[cli.MaxBump])
-
-	fmt.Println(newVersion)
-	if cli.RequireChange && newVersion.Equal(lastReleaseVersion) {
-		parser.Exit(10)
-	}
-
-	if cli.CreateTag {
-		err = createTag(ctx, client.Repositories, client.Git, owner, repo, fmt.Sprintf("v%s", newVersion), cli.Ref)
-		if err != nil {
-			log.Fatal("could not create tag.")
-		}
-	}
+	return &newVersion, lastReleaseVersion, false, nil
 }
 
 func calcLastReleaseVersion(lastTag, lastReleaseName string) (*semver.Version, error) {
-	version, err := semver.NewVersion(lastTag)
+	ver, err := semver.NewVersion(lastTag)
 	if err == nil {
-		return version, nil
+		return ver, nil
 	}
-	version, err = semver.NewVersion(lastReleaseName)
+	ver, err = semver.NewVersion(lastReleaseName)
 	if err == nil {
-		return version, nil
+		return ver, nil
 	}
 	return nil, fmt.Errorf("no version to return")
 }
