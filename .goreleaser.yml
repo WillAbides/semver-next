@@ -2,7 +2,6 @@
 # Make sure to check the documentation at http://goreleaser.com
 builds:
   - id: semver-next
-    main: ./main.go
     goos:
       - linux
       - darwin
