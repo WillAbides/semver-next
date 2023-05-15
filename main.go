@@ -43,6 +43,8 @@ be ignored when there are no commits between the previous release and the target
 	"require_labels_help": `Require labels on pull requests when commits come from PRs`,
 
 	"require_change_help": `Exit code is 10 if there have been no version changes since the last tag`,
+
+	"pr_help": `Check whether the pull request will be valid if merged. Either the PR has a label or all commits have good prefixes.`,
 }
 
 var mainHelp = `
@@ -52,7 +54,8 @@ latest release to determine the next release version based on semantic version r
 
 type cmd struct {
 	Repo                   string      `kong:"arg,required,help=${repo_help}"`
-	Ref                    string      `kong:"short=r,default=master,help=${ref_help}"`
+	Ref                    string      `kong:"short=r,xor='xx',help=${ref_help}"`
+	CheckPR                int         `kong:"check-pr,xor='xx',help=${pr_help}"`
 	PreviousReleaseVersion string      `kong:"short=v,placeholder=VERSION,help=${prev_version_help}"`
 	PreviousReleaseTag     string      `kong:"placeholder=TAG,help=${prev_tag_help}"`
 	MaxBump                string      `kong:"enum=${max_bump_enum},help=${max_bump_help},default=MAJOR"`
@@ -98,12 +101,20 @@ func main() {
 	if len(repoParts) != 2 {
 		panic("Repo must be in the form of owner/repo")
 	}
-
+	if cli.Ref == "" && cli.CheckPR == 0 {
+		k.Fatalf("either --ref or --check-pr must be set")
+	}
 	client := github.NewClient(
 		oauth2.NewClient(
 			ctx,
 			oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cli.GithubToken})),
 	)
+
+	if cli.CheckPR != 0 {
+		err = checkPR(ctx, client, &cli)
+		k.FatalIfErrorf(err)
+		return
+	}
 
 	newVersion, lastReleaseVersion, firstRelease, err := getSemver(ctx, client, &cli)
 	k.FatalIfErrorf(err)
@@ -118,6 +129,52 @@ func main() {
 		err = createTag(ctx, client.Repositories, client.Git, cli.repoOwner(), cli.repoName(), tag, cli.Ref)
 		k.FatalIfErrorf(err, "could not create tag")
 	}
+}
+
+func checkPR(ctx context.Context, ghClient *github.Client, cli *cmd) error {
+	owner := cli.repoOwner()
+	repoName := cli.repoName()
+	pr, _, err := ghClient.PullRequests.Get(ctx, owner, repoName, cli.CheckPR)
+	if err != nil {
+		return err
+	}
+	if pr.GetState() != "open" {
+		return fmt.Errorf("PR is not open")
+	}
+	var labels []string
+	for _, l := range pr.Labels {
+		labels = append(labels, l.GetName())
+	}
+	lvl := pullLevel(labels)
+	if lvl > changeLevelNoChange {
+		return nil
+	}
+	var unlabeled []string
+	var listOpts github.ListOptions
+	for {
+		commits, resp, err := ghClient.PullRequests.ListCommits(ctx, owner, repoName, cli.CheckPR, &listOpts)
+		if err != nil {
+			return err
+		}
+		for _, c := range commits {
+			cc := c.GetCommit()
+			if cc == nil {
+				return fmt.Errorf("repo commit has no git commit: %s", c.GetSHA())
+			}
+			prefixes := commitMessagePrefixes(cc.GetMessage())
+			if len(prefixes) == 0 {
+				unlabeled = append(unlabeled, c.GetSHA())
+			}
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		listOpts.Page = resp.NextPage
+	}
+	if len(unlabeled) > 0 {
+		return fmt.Errorf("PR has %d commits without a change prefix: %s", len(unlabeled), strings.Join(unlabeled, ", "))
+	}
+	return nil
 }
 
 func getSemver(ctx context.Context, ghClient *github.Client, cli *cmd) (version, latestRelease *semver.Version, firstRelease bool, _ error) {

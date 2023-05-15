@@ -39,7 +39,7 @@ type commit struct {
 func (c commit) level() changeLevel {
 	level := parseCommitMessage(c.message)
 	for _, p := range c.pulls {
-		level = level.greater(p.level())
+		level = level.greater(pullLevel(p.labels))
 	}
 	return level
 }
@@ -257,9 +257,9 @@ type pull struct {
 	labels []string
 }
 
-func (p pull) level() changeLevel {
+func pullLevel(labels []string) changeLevel {
 	level := changeLevelNoChange
-	for _, label := range p.labels {
+	for _, label := range labels {
 		label = strings.ToLower(strings.TrimSpace(label))
 		labelLevel, ok := labelLevels[label]
 		if !ok {
