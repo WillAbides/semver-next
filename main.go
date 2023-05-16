@@ -157,11 +157,11 @@ func checkPR(ctx context.Context, ghClient *github.Client, cli *cmd) error {
 			return err
 		}
 		for _, c := range commits {
-			cc := c.GetCommit()
-			if cc == nil {
-				return fmt.Errorf("repo commit has no git commit: %s", c.GetSHA())
+			// merge commits are exempt
+			if len(c.Parents) > 1 {
+				continue
 			}
-			prefixes := commitMessagePrefixes(cc.GetMessage())
+			prefixes := commitMessagePrefixes(c.GetCommit().GetMessage())
 			if len(prefixes) == 0 {
 				unlabeled = append(unlabeled, c.GetSHA())
 			}
