@@ -39,7 +39,10 @@ type commit struct {
 func (c commit) level() changeLevel {
 	level := parseCommitMessage(c.message)
 	for _, p := range c.pulls {
-		level = level.greater(pullLevel(p.labels))
+		_, l := labelsLevel(p.labels)
+		if l > level {
+			level = l
+		}
 	}
 	return level
 }
@@ -180,12 +183,16 @@ func nextVersion(version semver.Version, commits []commit, minBump, maxBump chan
 	if len(commits) == 0 {
 		return version
 	}
-	level := changeLevelNoChange
+	level := minBump
 	for _, c := range commits {
-		level = level.greater(c.level())
+		l := c.level()
+		if l > level {
+			level = l
+		}
 	}
-	level = level.greater(minBump)
-	level = level.lesser(maxBump)
+	if level > maxBump {
+		level = maxBump
+	}
 	switch level {
 	case changeLevelPatch:
 		return version.IncPatch()
@@ -247,7 +254,9 @@ func parseCommitMessage(message string) changeLevel {
 	level := changeLevelNoChange
 	prefixes := commitMessagePrefixes(message)
 	for _, prefix := range prefixes {
-		level = level.greater(prefixLevels[prefix])
+		if prefixLevels[prefix] > level {
+			level = prefixLevels[prefix]
+		}
 	}
 	return level
 }
@@ -257,17 +266,21 @@ type pull struct {
 	labels []string
 }
 
-func pullLevel(labels []string) changeLevel {
+func labelsLevel(labels []string) (bool, changeLevel) {
 	level := changeLevelNoChange
+	hasLabel := false
 	for _, label := range labels {
 		label = strings.ToLower(strings.TrimSpace(label))
 		labelLevel, ok := labelLevels[label]
 		if !ok {
 			continue
 		}
-		level = level.greater(labelLevel)
+		hasLabel = true
+		if labelLevel > level {
+			level = labelLevel
+		}
 	}
-	return level
+	return hasLabel, level
 }
 
 type changeLevel int
@@ -278,19 +291,3 @@ const (
 	changeLevelMinor
 	changeLevelMajor
 )
-
-// lesser returns whichever is lower, c or other
-func (c changeLevel) lesser(other changeLevel) changeLevel {
-	if other < c {
-		return other
-	}
-	return c
-}
-
-// greater returns whichever is higher, c or other
-func (c changeLevel) greater(other changeLevel) changeLevel {
-	if other > c {
-		return other
-	}
-	return c
-}
