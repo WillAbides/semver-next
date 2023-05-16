@@ -145,9 +145,12 @@ func checkPR(ctx context.Context, ghClient *github.Client, cli *cmd) error {
 	for _, l := range pr.Labels {
 		labels = append(labels, l.GetName())
 	}
-	lvl := pullLevel(labels)
-	if lvl > changeLevelNoChange {
+	hasLabel, level := labelsLevel(labels)
+	if level > changeLevelNoChange {
 		return nil
+	}
+	if !hasLabel && cli.RequireLabels {
+		return fmt.Errorf("PR does not have a change-level label")
 	}
 	var unlabeled []string
 	var listOpts github.ListOptions
@@ -172,7 +175,7 @@ func checkPR(ctx context.Context, ghClient *github.Client, cli *cmd) error {
 		listOpts.Page = resp.NextPage
 	}
 	if len(unlabeled) > 0 {
-		return fmt.Errorf("PR has %d commits without a change prefix: %s", len(unlabeled), strings.Join(unlabeled, ", "))
+		return fmt.Errorf("PR has %d commits without a change-level prefix: %s", len(unlabeled), strings.Join(unlabeled, ", "))
 	}
 	return nil
 }
