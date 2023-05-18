@@ -16,7 +16,6 @@ linters:
     - gosec
     - unconvert
     - gocyclo
-    - goconst
     - goimports
     - gocritic
     - gofumpt
