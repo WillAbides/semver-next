@@ -1,4 +1,4 @@
-module github.com/WillAbides/semver-next
+module github.com/WillAbides/semver-next/v2
 
 go 1.20
 
