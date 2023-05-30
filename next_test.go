@@ -234,6 +234,64 @@ func Test_next(t *testing.T) {
 		require.Equal(t, &want, got)
 	})
 
+	t.Run("no change", func(t *testing.T) {
+		gh := wrapperStub{
+			compareCommits: func(ctx context.Context, owner, repo, base, head string) ([]string, error) {
+				t.Helper()
+				assert.Equal(t, []string{"willabides", "semver-next", "v0.15.0"}, []string{owner, repo, base})
+				assert.Equal(t, sha1, head)
+				return []string{sha1, sha2}, nil
+			},
+			listPullRequestsWithCommit: mockListPullRequestsWithCommit(t, []listPullRequestsWithCommitCall{
+				{
+					owner: "willabides", repo: "semver-next", sha: sha1,
+					result: []ResultPull{
+						{Number: 1, Labels: []string{"something else"}},
+						{Number: 2, Labels: []string{changeLevelNoChange.String()}},
+						{Number: 3},
+						{Number: 4, Labels: []string{changeLevelNoChange.String()}},
+					},
+				},
+				{
+					owner: "willabides", repo: "semver-next", sha: sha2,
+					result: []ResultPull{},
+				},
+			}),
+		}
+		got, err := next(
+			ctx,
+			nextOptions{
+				repo: "willabides/semver-next",
+				base: "v0.15.0",
+				head: sha1,
+				gh:   &gh,
+			},
+		)
+		require.NoError(t, err)
+		want := Result{
+			NextVersion:     "0.15.0",
+			PreviousVersion: "0.15.0",
+			ChangeLevel:     changeLevelNoChange,
+			Commits: []ResultCommit{
+				{
+					Sha: sha1,
+					Pulls: []ResultPull{
+						{Number: 1, Labels: []string{}},
+						{Number: 2, Labels: []string{changeLevelNoChange.String()}, ChangeLevel: changeLevelNoChange},
+						{Number: 3, Labels: []string{}},
+						{Number: 4, Labels: []string{changeLevelNoChange.String()}, ChangeLevel: changeLevelNoChange},
+					},
+					ChangeLevel: changeLevelNoChange,
+				},
+				{
+					Sha:   sha2,
+					Pulls: []ResultPull{},
+				},
+			},
+		}
+		require.Equal(t, &want, got)
+	})
+
 	t.Run("missing labels", func(t *testing.T) {
 		gh := wrapperStub{
 			compareCommits: func(ctx context.Context, owner, repo, base, head string) ([]string, error) {
