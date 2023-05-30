@@ -56,14 +56,23 @@ func parseChangeLevel(v string) (changeLevel, error) {
 var labelLevels = map[string]changeLevel{
 	"breaking":        changeLevelMajor,
 	"breaking change": changeLevelMajor,
-	"bug":             changeLevelPatch,
-	"enhancement":     changeLevelMinor,
-	"patch":           changeLevelPatch,
-	"semver:patch":    changeLevelPatch,
-	"minor":           changeLevelMinor,
-	"semver:minor":    changeLevelMinor,
 	"major":           changeLevelMajor,
 	"semver:major":    changeLevelMajor,
+
+	"enhancement":  changeLevelMinor,
+	"minor":        changeLevelMinor,
+	"semver:minor": changeLevelMinor,
+
+	"bug":          changeLevelPatch,
+	"fix":          changeLevelPatch,
+	"patch":        changeLevelPatch,
+	"semver:patch": changeLevelPatch,
+
+	"no change":        changeLevelNoChange,
+	"semver:none":      changeLevelNoChange,
+	"semver:no change": changeLevelNoChange,
+	"semver:nochange":  changeLevelNoChange,
+	"semver:skip":      changeLevelNoChange,
 }
 
 type Result struct {
