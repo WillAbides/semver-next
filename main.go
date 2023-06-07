@@ -33,6 +33,9 @@ don't follow semver format.`,
 
 	"min_bump_help": `The maximum amount to bump the version. This will
 be ignored when there are no commits between the previous release and the target ref.`,
+
+	"show_labels_help": `Output the labels semver-next uses to determine the change level of a pull request. Labels are
+output as a JSON object where the key is the label name and the value is the change level.`,
 }
 
 var mainHelp = `
@@ -41,21 +44,35 @@ latest release to determine the next release version based on pull request label
 `
 
 type cmd struct {
-	Repo        string      `kong:"arg,required,help=${repo_help}"`
-	Ref         string      `kong:"required,short=r,help=${ref_help}"`
-	PrevRef     string      `kong:"prev,required,short=p,help=${prev_tag_help}"`
-	PrevVersion string      `kong:"prev-version,short=v,help=${prev_version_help}"`
-	MaxBump     string      `kong:"enum=${bump_enum},help=${max_bump_help},default=major"`
-	MinBump     string      `kong:"enum=${bump_enum},help=${max_bump_help},default=none"`
-	GithubToken string      `kong:"required,hidden,env=GITHUB_TOKEN"`
-	Version     versionFlag `kong:"help=${version_help}"`
-	Json        bool        `kong:"help=Output in JSON format"`
+	Repo        string         `kong:"arg,required,help=${repo_help}"`
+	Ref         string         `kong:"required,short=r,help=${ref_help}"`
+	PrevRef     string         `kong:"prev,required,short=p,help=${prev_tag_help}"`
+	PrevVersion string         `kong:"prev-version,short=v,help=${prev_version_help}"`
+	MaxBump     string         `kong:"enum=${bump_enum},help=${max_bump_help},default=major"`
+	MinBump     string         `kong:"enum=${bump_enum},help=${max_bump_help},default=none"`
+	GithubToken string         `kong:"required,hidden,env=GITHUB_TOKEN"`
+	ShowLabels  showLabelsFlag `kong:"help=${show_labels_help}"`
+	Version     versionFlag    `kong:"help=${version_help}"`
+	Json        bool           `kong:"help=Output in JSON format"`
 }
 
 type versionFlag bool
 
 func (d versionFlag) BeforeApply(k *kong.Context) error {
 	k.Printf("version %s", version)
+	k.Kong.Exit(0)
+	return nil
+}
+
+type showLabelsFlag bool
+
+func (d showLabelsFlag) BeforeApply(k *kong.Context) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(labelLevels)
+	if err != nil {
+		k.FatalIfErrorf(err)
+	}
 	k.Kong.Exit(0)
 	return nil
 }

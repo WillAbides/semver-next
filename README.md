@@ -39,6 +39,9 @@ Flags:
                                necessary when release tags don't follow semver format.
       --max-bump="major"       The maximum amount to bump the version.
       --min-bump="none"        The maximum amount to bump the version.
+      --show-labels            Output the labels semver-next uses to determine the change level of a
+                               pull request. Labels are output as a JSON object where the key is the
+                               label name and the value is the change level.
       --version                output semver-next's version and exit
       --json                   Output in JSON format
 ```
